@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# Extracts an RPM to a directory containing its contents.
+#
+# Usage:	rpmextract file-1.0-1.x86_64.rpm
+# Creates:	./file-1.0-1.x86_64/<RPM Contents>
+#
+#
+# Author:			Michael J. Ayers	<ayersmj@redhat.com>
+# Last Modified:	Wed, 13 Jan 2016 16:54:03 EST
+#
+
+if [[ ! -z $1 ]];then
+	if [[ -f $1 ]];then
+		FILE=$1
+	else
+		echo -e "File not found:\t$1"
+		exit 2
+	fi
+else
+	echo -e "Usage:\t$0 [RPM File]"
+	exit 1
+fi
+
+pkg-name() {
+	# Strip RPM extension
+	PKG=`echo ${FILE} | sed -r 's/\.rpm$//g'`
+
+	# Strip RPM Arch
+	#PKG=`echo ${PKG} | sed -r 's/\.i[3-6]86$//g'`
+	#PKG=`echo ${PKG} | sed -r 's/\.x86_64$//g'`
+	#PKG=`echo ${PKG} | sed -r 's/\.noarch$//g'`
+
+	# Strip RPM Release
+	#PKG=`echo ${PKG} | sed -r 's/\.el[3-7]$//g'`
+	#PKG=`echo ${PKG} | sed -r 's/\.f[0-9][0-9]\..*rpm$//g'`
+}
+
+pkg-name
+echo -en "Extracting RPM to:\t./${PKG} ... "
+mkdir ${PKG}
+cd ${PKG}
+OUTPUT=`rpm2cpio ../${FILE} | cpio -id 2>&1 > /dev/null`
+echo -e "done!"
+cd - 2>&1 > /dev/null
