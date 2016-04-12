@@ -1,4 +1,6 @@
 #!/bin/bash
+# ServiceWatch script.
+# https://github.com/ayerlock/redhat-scripts
 
 # Configuration Directory
 #CONFD="/etc/servicewatch.d"
