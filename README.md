@@ -27,3 +27,20 @@ $ rhn-cdn-connect.sh
   - Requires a RHN subscribed system
   - Supports using a proxy host
 
+
+### servicewatch
+Script which leverages cron to check whether a daemon is running or not based on the daemon name
+
+To install:
+```sh
+$ git clone https://github.com/ayerlock/redhat-scripts
+$ cd redhat-scripts/servicewatch
+$ cp etc/cron.d/servicewatch /etc/cron.d/
+$ mkdir -p /etc/servicewatch.d/
+$ cp -a etc/servicewatch.d/* /etc/servicewatch.d/
+$ cp -a usr/local/bin/servicewatch /usr/local/bin
+$ chmod 775 /usr/local/bin/servicewatch
+```
+**Notes:**
+  - Edit the `/etc/cron.d/servicewatch` file to set up how often you want the application to be watched
+  - Edit the `/etc/servicewatch.d/<service>` file to configure how you want the service watched
