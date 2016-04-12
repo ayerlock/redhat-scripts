@@ -31,7 +31,7 @@ $ rhn-cdn-connect.sh
 ### servicewatch
 Script which leverages cron to check whether a daemon is running or not based on the daemon name
 
-To install:
+**To install:**
 ```sh
 $ git clone https://github.com/ayerlock/redhat-scripts
 $ cd redhat-scripts/servicewatch
