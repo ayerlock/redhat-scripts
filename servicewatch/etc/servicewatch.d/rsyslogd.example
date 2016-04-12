@@ -1,6 +1,6 @@
 #--- Servicewatch configuration file ---
 
-# Daemon servicewatch is watching
+# Daemon servicewatch is watching.
 #DAEMON=rsyslogd
 DAEMON=rsyslogd
 
