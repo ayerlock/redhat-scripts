@@ -1,0 +1,193 @@
+#!/bin/bash
+
+# Configuration Directory
+#CONFD="/etc/servicewatch.d"
+CONFD="/home/ayersmj/workspace/git-repos/redhat-scripts/servicewatch/etc/servicewatch.d"
+
+# User binaries location
+BIND="/bin"
+UBIND="/usr/bin"
+
+# System binaries location
+SBIND="/sbin"
+USBIND="/usr/sbin"
+
+# Default Verbosity
+VERBOSITY=0
+
+check_systemd() {
+  if [[ ${VERBOSITY} -gt 1 ]];then echo -en "Checking for systemd:\t";fi
+  if [[ -f ${UBIND}/systemctl ]];then
+    CD_SYSTEMD=1
+    if [[ ${VERBOSITY} -gt 1 ]];then echo -e "yes";fi
+  else
+    CK_SYSTEMD=0
+    if [[ ${VERBOSITY} -gt 1 ]];then echo -e "no";fi
+  fi
+}
+
+check_sosreport() {
+  if [[ ${VERBOSITY} -gt 1 ]];then echo -en "Checking for sosreport binary:\t";fi
+  if [[ -f ${SBIND}/sosreport ]] || [[ -f ${USBIND}/sosreport ]];then
+    CK_SOSREPORT=1
+    if [[ ${VERBOSITY} -gt 1 ]];then echo -e "yes";fi
+  else
+    CK_SOSREPORT=0
+    if [[ ${VERBOSITY} -gt 1 ]];then echo -e "no";fi
+  fi
+}
+
+run_prescript() {
+  if [[ ! -z ${PRESCRIPT} ]];then
+    bash -c "${PRESCRIPT}"
+  fi
+}
+
+run_postscript() {
+  if [[ ! -z ${POSTSCRIPT} ]];then
+    bash -c "${POSTSCRIPT}"
+  fi
+}
+
+send_email() {
+  HOST=`hostname -f`
+  SUBJECT="The \"${DAEMON}\" daemon was restarted on host: ${HOST}"
+  if [[ ${SOSREPORT} -eq 1 ]];then
+    SOSMSG="A sosreport was generated and is located on ${HOST} at: \"${SOSFILE}\"."
+  else
+    SOSMSG=""
+  fi
+  if [[ ! -z ${EMAIL} ]];then
+    if [[ -z ${MAILPROG} ]];then
+      if [[ -f ${BIND}/mail ]];then
+        MAILPROG="${BIND}/mail"
+        MAILER="mail"
+      elif [[ -f ${UBIND}/mail ]];then
+        MAILPROG="${UBIND}/mail"
+        MAILER="mail"
+      elif [[ -f ${SBIND}/sendmail ]];then
+        MAILPROG="${SBIND}/sendmail"
+        MAILER="sendmail"
+      elif [[ -f ${USBIND}/sendmail ]];then
+        MAILPROG="${USBIND}/sendmail"
+        MAILER="sendmail"
+      fi
+    elif [[ ! -f ${MAILPROG} ]];then
+      echo -e "Mail program does not exist or is not installed: \"${MAILPROG}\".  Please correct your configuration and try again." >&2
+    else
+      MAILER=`basename ${MAILPROG}`
+    fi
+
+    if [[ ${MAILER} == mail ]];then
+      ${MAILPROG} -s "${SUBJECT}" ${EMAIL} << EOMAIL
+The '${DAEMON}' daemon was restarted on host ${HOST} by the servicewatch daemon at: ${RESTART_DATE}.
+
+${SOSMSG}
+EOMAIL
+      RESULT=$?
+      echo -e "Result: ${RESULT}"
+
+    elif [[ ${MAILER} == sendmail ]];then
+      ${MAILPROG} ${EMAIL} << EOMAIL
+Subject: ${SUBJECT}
+
+The '${DAEMON}' daemon was restarted on host ${HOST} by the servicewatch daemon at: ${RESTART_DATE}.
+
+${SOSMSG}
+EOMAIL
+      RESULT=$?
+      echo -e "Result: ${RESULT}"
+    fi
+  fi
+}
+
+restart_daemon() {
+  if [[ ${USE_SYSTEMD} -eq 1 ]] && [[ ${USE_INITD} -eq 0 ]];then
+    if [[ ! -z ${SYSTEMD_SERVICE} ]] && [[ ! -z ${SYSTEMD_COMMAND} ]];then
+      if [[ ${VERBOSITY} -gt 0 ]];then echo -e "Restarting ${DAEMON}.\tCmd: systemctl ${SYSTEMD_COMMAND} ${SYSTEMD_SERVICE}";fi
+      run_prescript
+      RESTART_DATE=`date`
+      systemctl ${SYSTEMD_COMMAND} ${SYSTEMD_SERVICE}
+      run_postscript
+    else
+      echo -e "Configuration values for systemd commands are not set properly...aborting!" >&2
+      exit 3
+    fi
+  elif [[ ${USE_INITD} -eq 1 ]] && [[ ${USE_SYSTEMD} -eq 0 ]];then
+    if [[ ! -z ${INITD_SERVICE} ]] && [[ ! -z ${INITD_COMMAND} ]];then
+      if [[ -f /etc/init.d/${INITD_SERVICE} ]];then
+        if [[ ${VERBOSITY} -gt 0 ]];then echo -e "Restarting ${DAEMON}.\tCmd: service ${INITD_SERVICE} ${INITD_COMMAND}";fi
+        run_prescript
+        RESTART_DATE=`date`
+        service ${INITD_SERVICE} ${INITD_COMMAND}
+        run_postscript
+      else
+        echo -e "Error: init.d service file not found: \"/etc/init.d/${INITD_SERVICE}\"" >&2
+        echo -e "Correct service definition file: ${CONFD}/${DAEMONCFG}" >&2
+        exit 5
+      fi
+    fi
+  else
+    echo -e "Neither systemd nor initd has been properly configured for use or you selected both...aborting!" >&2
+    exit 4
+  fi
+}
+
+run_sosreport() {
+  if [[ ${SOSREPORT} -eq 1 ]] && [[ ${CK_SOSREPORT} -eq 1 ]];then
+    if [[ ${VERBOSITY} -gt 0 ]];then echo -e "Running sosreport.";fi
+    SOSFILE=`sosreport -a --batch 2>&1 | grep -E -A1 "Your sosreport has been generated" | tail -n1 | sed -e 's/^ *//g'`
+  elif [[ ${SOSREPORT} -eq 1 ]] && [[ ${CK_SOSREPORT} -eq 0 ]];then
+    echo -e "Sosreport was requested but '${USBIND}/sosreport' is not installed." 
+  fi
+}
+
+check_daemon() {
+  if [[ ${VERBOSITY} -gt 1 ]];then echo -en "Checking if daemon \"${DAEMON}\" is running:\t";fi
+  ps -ef | grep -v grep | grep -v servicewatch | grep ${DAEMON} 2>&1>>/dev/null
+  CK_DAEMON=$?
+  if [[ ${CK_DAEMON} -eq 0 ]];then
+    echo -e "yes"
+    DAEMON_BIN=`ps -ef | grep -v grep | grep -v servicewatch | grep ${DAEMON} | awk '{ print $8 }'`
+    DAEMON_PID=`ps -ef | grep -v grep | grep -v servicewatch | grep ${DAEMON} | awk '{ print $2 }'`
+    echo -e "Daemon:\t${DAEMON_BIN}\t\tPID: ${DAEMON_PID}"
+  else
+    echo -e "no"
+    restart_daemon
+    if [[ ${SOSREPORT} -eq 1 ]];then
+      check_sosreport
+      run_sosreport
+    fi
+    send_email
+  fi
+}
+
+while getopts "d:v" OPTION;do
+  case ${OPTION} in
+    "d")
+      DAEMONCFG=${OPTARG}
+      if [[ ! -f ${CONFD}/${DAEMONCFG} ]];then
+        echo -e "Error: Daemon configuration file does not exist!  Missing: ${CONFD}/${DAEMONCFG}" >&2
+        exit 2
+      else
+        echo -e "Reading config: ${CONFD}/${DAEMONCFG}"
+        source ${CONFD}/${DAEMONCFG}
+      fi
+      ;;
+    "v")
+      (( VERBOSITY=VERBOSITY+1 ))
+      ;;
+    *)
+      exit 1
+      ;;
+  esac
+done
+
+if [[ ${VERBOSITY} -gt 1 ]];then
+  echo -e "Daemon:\t\t${DAEMON}"
+  echo -e "Sosreport:\t${SOSREPORT}"
+  echo -e "Verbosity:\t${VERBOSITY}"
+fi
+
+check_systemd
+check_daemon

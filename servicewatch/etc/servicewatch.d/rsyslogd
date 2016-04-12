@@ -1,0 +1,45 @@
+#--- Servicewatch configuration file ---
+
+# Daemon servicewatch is watching
+#DAEMON=rsyslogd
+DAEMON=rsyslogd
+
+# Run sosreport if daemon is crashed or terminated
+#   note: sosreport runs after the daemon has been restarted
+#         regardless of whether the restart was successful or not
+SOSREPORT=1
+
+# Send email upon restart
+SENDEMAIL=1
+
+# Address to send email to
+#EMAIL="user@example.com"
+EMAIL="root@localhost"
+
+# Mailer program.  Leave blank for autodetection.
+#MAILPROG="/bin/mail"
+#MAILPROG="/sbin/sendmail"
+MAILPROG=""
+
+# Run 3rd party script upon daemon crash.  Leave blank to not run a script.  Requires full path and args.
+# These should only work if the initd or systemd values are set correctly
+# POSTSCRIPT runs before the daemon restart.
+# POSTSCRIPT runs after the daemon restart.
+PRESCRIPT=""
+POSTSCRIPT=""
+
+### IMPORTANT #####################################################################
+# If system uses systemd (Fedora >= 20, RHEL/CentOS >= 7), set values for section 1
+# If system uses initd (Fedora <= 19, RHEL/CentOS <= 6), set values for section 2
+###################################################################################
+#--- Start Section 1 -- systemd ---------------------------------
+USE_SYSTEMD=0
+SYSTEMD_SERVICE="rsyslog"
+SYSTEMD_COMMAND="restart"
+#--- End Section 1 ---- systemd ---------------------------------
+#--- Start Section 2 -- init.d ----------------------------------
+USE_INITD=1
+INITD_SERVICE="rsyslog"
+INITD_COMMAND="restart"
+#--- End Section 2 ---- init.d ----------------------------------
+
