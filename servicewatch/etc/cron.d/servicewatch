@@ -1,11 +1,11 @@
-# Run the servicewatch command at specific intervals
+# Run the servicewatch command at specific intervals.
 SHELL="/bin/bash"
 PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 # Add email here to have cron send a mail every time it runs.  This can be very obnoxious.
 MAILTO=""
 
-# Run servicewatch every minute to verify rsyslog is running
+# Run servicewatch every minute to verify rsyslog is running.
 #*/1 * * * * root      /usr/local/bin/servicewatch -d rsylog
 
-# Run servicewatch every 10 minutes to verify firewalld is running
+# Run servicewatch every 10 minutes to verify firewalld is running.
 #*/10 * * * * root      /usr/local/bin/servicewatch -d firewalld
