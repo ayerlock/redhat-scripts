@@ -1,0 +1,202 @@
+#!/bin/bash
+
+### Default Variables ###################################################################
+
+  DEBUG=0
+  VERBOSE=0
+  SCRIPT=`basename $0`
+  LOGFILE="/var/log/${SCRIPT}.log"
+  CLEARLOG=0
+
+  # Date Format
+  DFMT='+%F %T.%N'
+
+  # Default logfile script is watching
+  LOGWATCH="/var/log/audit/audit.log"
+
+### Logging Functions ###################################################################
+
+olog() {
+    # Generic Output Logging Function
+    _MSG="$@"
+    echo -e " ${SCRIPT}:\t${_MSG}" | tee -a ${LOGFILE}
+}
+
+elog() {
+    # StdErr Output Logging Function
+    _MSG="$@"
+    echo -e " ${SCRIPT}:\t${_MSG}" >&2 | tee -a ${LOGFILE}
+}
+
+vlog() {
+    # Verbose Output Logging Function
+    _MSG="$@"
+	DATETIME=$(date "${DFMT}")
+    if [[ ${VERBOSE} -eq 1 ]]; then
+        echo -e " ${SCRIPT}:\t${DATETIME}\t(v) ${_MSG}" | tee -a ${LOGFILE}
+    fi
+}
+
+dlog() {
+    # Debug Output Logging Function
+    _MSG="$@"
+	DATETIME=$(date "${DFMT}")
+    if [[ ${DEBUG} -eq 1 ]]; then
+        echo -e " ${SCRIPT}:\t${DATETIME}\t  (d) ${_MSG}" | tee -a ${LOGFILE}
+    fi
+}
+
+### usage() Function ####################################################################
+
+usage() {
+    olog "Usage: $0 [-dvhcf:L:e:t:]"
+    olog "\t -d: Enable debug output"
+    olog "\t -v: Enable verbose output"
+    olog "\t -h: Usage/Help output"
+	olog "\t -f: Log File (default: ${LOGFILE})"
+	olog "\t -c: Clear logfile before run."
+    olog "\t -L: Audit log to watch (default: ${LOGWATCH})"
+    olog "\t -e: Event executable to monitor for (i.e. /bin/bash)"
+    olog "\t -t: Event type to monitor for (i.e. SYSCALL, SERVICE_START, SERVICE_STOP)"
+}
+
+### printevent() Function ##################################################################
+
+printevent() {
+	DATETIME=$(date "${DFMT}")
+	echo -e "====== EVENT #${EVTCNT} === START === ${DATETIME} ====================================================================" | tee -a ${LOGFILE}
+	echo -e "   EVENT [ ${EVENT} ]" | tee -a ${LOGFILE}
+	echo | tee -a ${LOGFILE}
+	pstree -lputa | sed -e 's/^/\t/g' | tee -a ${LOGFILE}
+	DATETIME=$(date "${DFMT}")
+	echo -e "====== EVENT #${EVTCNT} ==== END ==== ${DATETIME} ======================================================================" | tee -a ${LOGFILE}
+	echo | tee -a ${LOGFILE}
+}
+
+### evtchkexe() Function ###################################################################
+
+evtchkexe() {
+	_CHKEXE=0
+	DOGREP=$(echo -e ${EVENT} | grep -Ei "exe=\"${EVTEXE}\"")
+	RESULT=$?
+	if [[ ${RESULT} -eq 0 ]]; then
+		_CHKEXE=1
+	fi
+}
+
+### evtchktype() Function ##################################################################
+
+evtchktype() {
+	_CHKTYPE=0
+	DOGREP=$(echo -e "${EVENT}" | grep -Ei "type=${EVTTYPE}")
+	RESULT=$?
+	if [[ ${RESULT} -eq 0 ]]; then
+		_CHKTYPE=1
+	fi
+}
+
+### eventchk() Function ####################################################################
+eventchk() {
+	EVENT=$1
+
+	if [[ ${CHECKTYPE} -eq 1 ]] && [[ ${CHECKEXE} -eq 1 ]]; then
+		evtchkexe
+		evtchktype
+		if [[ ${_CHKEXE} -eq 1 ]] && [[ ${_CHKTYPE} -eq 1 ]]; then
+			EVTCNT=$(expr ${EVTCNT} + 1)
+			printevent
+		fi
+	elif [[ ${CHECKTYPE} -eq 0 ]] && [[ ${CHECKEXE} -eq 1 ]]; then
+		evtchkexe
+		if [[ ${_CHKEXE} -eq 1 ]]; then
+			EVTCNT=$(expr ${EVTCNT} + 1)
+			printevent
+		fi
+	elif [[ ${CHECKTYPE} -eq 1 ]] && [[ ${CHECKEXE} -eq 0 ]]; then
+		evtchktype
+		if [[ ${_CHKTYPE} -eq 1 ]]; then
+			EVTCNT=$(expr ${EVTCNT} + 1)
+			printevent
+		fi
+	else
+		MSG="At least one check type must be specified (either -e or -t)"
+		elog ${MSG}
+		exit 2
+	fi
+}
+
+### Main Script #########################################################################
+ ### Options parsing #####
+  while getopts "dvhf:ce:t:L:" _OPT;do
+    case "$_OPT" in
+        "d")
+            DEBUG="1"
+            dlog "Debug enabled."
+            ;;
+        "v")
+            VERBOSE="1"
+            vlog "Verbose enabled."
+            ;;
+        "h")
+            usage
+            exit 0
+            ;;
+		"f")
+			LOGFILE=${OPTARG}
+			;;
+		"c")
+			CLEARLOG=1
+			;;
+        "e")
+			CHECKEXE=1
+			EVTEXE=${OPTARG}
+			;;
+        "t")
+			CHECKTYPE=1
+			EVTTYPE=${OPTARG}
+			;;
+        "L")
+            LOGFILE=${OPTARG}
+            ;;
+        *)
+            elog "Error: Invalid Option!" >&2
+            usage
+			UERR=1
+            break;exit 1
+            ;;
+    esac
+  done
+  shift $((OPTIND -1))
+
+ ### Log Check #####################
+  if [[ ! -f ${LOGWATCH} ]]; then
+	exit 1
+  fi
+
+ ### Log Clear (optional) ##########
+  if [[ ${CLEARLOG} -eq 1 ]] && [[ -f ${LOGFILE} ]];then
+	rm -f ${LOGFILE}
+  	olog "Previous logfile removed..."
+  fi
+
+ # Trap SIGINT (Ctrl+C) to exit gracefully
+  trap 'echo -e "\\nExiting..."; exit 0' SIGINT
+
+ # Watch the log file for new lines and process them
+  EVTCNT=0
+  if [[ ! ${UERR} -eq 1 ]]; then
+
+  	olog "Watching logfile:\t\t${LOGWATCH}"
+	if [[ ${CHECKEXE} -eq 1 ]]; then
+  		olog "   ...for events including:\texe=\"${EVTEXE}\""
+	fi
+	if [[ ${CHECKTYPE} -eq 1 ]]; then
+  		olog "   ...for events including:\ttype=${EVTTYPE}"
+	fi
+	echo -e | tee -a ${LOGFILE}
+
+	# Start infite loop until Ctrl-C or a SIGKILL is sent.
+  	while read -r LOGLINE; do
+		eventchk "${LOGLINE}"
+	done < <(tail -n0 -F ${LOGWATCH})
+  fi
