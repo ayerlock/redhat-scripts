@@ -26,7 +26,7 @@ $ auditwatch -c -e /usr/libexec/openssh/sshd-session -t USER
  auditwatch:       ...for events including:     exe="/usr/libexec/openssh/sshd-session"
  auditwatch:       ...for events including:     type=USER
 
-====== EVENT #1 === START === 2025-06-09 15:12:05.864690200 ====================================================================
+====== EVENT #1 === START === 2025-06-01 00:00:01.864690200 ====================================================================
    EVENT [ type=USER_END msg=audit(1749496325.855:633567): pid=4185183 uid=0 auid=0 ses=1688 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=login id=0 exe="/usr/libexec/openssh/sshd-session" hostname=? addr=? terminal=/dev/pts/6 res=success'UID="root" AUID="root" ID="root" ]
 
         systemd,1 --switched-root --system --deserialize=50 rhgb
@@ -50,7 +50,7 @@ $ auditwatch -c -e /usr/libexec/openssh/sshd-session -t USER
           |       `-sshd-session,4127107
           |           `-bash,4127108
           `-wpa_supplicant,1552 -c /etc/wpa_supplicant/wpa_supplicant.conf -u -s
-====== EVENT #1 ==== END ==== 2025-06-09 15:12:05.923311810 ======================================================================
+====== EVENT #1 ==== END ==== 2025-06-01 00:00:01.923311810 ======================================================================
 ```
 **Notes:**
   - Script _**should not**_ be affected by any audit log rotations that occur while waiting on a matching event.
