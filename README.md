@@ -54,6 +54,7 @@ $ auditwatch -c -e /usr/libexec/openssh/sshd-session -t USER
 ```
 **Notes:**
   - Script _**should not**_ be affected by any audit log rotations that occur while waiting on a matching event.
+  - Needs to be run as either root or via sudo since it must be able to view both the audit file and the entire process tree in order to capture events
 
 -------------------------------------------------------------------------------------------------------------------------------
 ### rpmextract
