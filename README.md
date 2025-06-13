@@ -1,10 +1,11 @@
 # redhat-scripts
 Various scripts for use with Red Hat/Fedora products
-
+-------------------------------------------------------------------------------------------------------------------------------
 ### auditwatch
 Script for monitoring the audit log for a specific event or set of events and then outputting a process tree map in order to determine what initialized the events in question.
+
 **Usage:**
-```sh
+```txt
 # ./auditwatch -h
  auditwatch:    Usage: ./auditwatch [-dvhcf:L:e:t:]
  auditwatch:             -d: Enable debug output
@@ -16,6 +17,7 @@ Script for monitoring the audit log for a specific event or set of events and th
  auditwatch:             -e: Event executable to monitor for (i.e. /bin/bash)
  auditwatch:             -t: Event type to monitor for (i.e. SYSCALL, SERVICE_START, SERVICE_STOP)
 ```
+
 **Example:**
 ```sh
 $ auditwatch -c -e /usr/libexec/openssh/sshd-session -t USER
@@ -53,7 +55,7 @@ $ auditwatch -c -e /usr/libexec/openssh/sshd-session -t USER
 **Notes:**
   - Script _**should not**_ be affected by any audit log rotations that occur while waiting on a matching event.
 
-
+-------------------------------------------------------------------------------------------------------------------------------
 ### rpmextract
 Script for extracting an RPM into a subdirectory named after the RPM into your current directory.
 **Usage:**
@@ -69,7 +71,7 @@ drwxrwsr-x. 1 root    root          4 Jan 01 00:00 rpmfile-1.0-1.el7.x86_64
   - Editing the script allows you to remove additional parts of the RPM filename from the created path.  (See script for details)
 
 
-
+-------------------------------------------------------------------------------------------------------------------------------
 ### rhn-cdn-connect.sh
 Script for testing connectivity and response time between a host and the Red Hat CDN.
 
@@ -82,7 +84,7 @@ $ rhn-cdn-connect.sh
   - Supports using a proxy host
 
 
-
+-------------------------------------------------------------------------------------------------------------------------------
 ### servicewatch
 Script which leverages cron to check whether a daemon is running or not based on the daemon name
 
